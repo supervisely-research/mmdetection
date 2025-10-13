@@ -63,6 +63,12 @@ def main():
     # Reduce the number of repeated compilations and improve
     # training speed.
     setup_cache_size_limit_of_dynamo()
+    import torch
+    import mmengine
+    import mmengine.runner
+
+    torch.serialization.add_safe_globals([mmengine.logging.history_buffer.HistoryBuffer, 
+                                          mmengine.runner.checkpoint.load_from_local])
 
     # load config
     cfg = Config.fromfile(args.config)
