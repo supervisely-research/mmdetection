@@ -76,14 +76,20 @@ val_dataloader = dict(
         ann_file=val_ann_file_50,
         data_prefix=dict(img=val_dir)))
 
-test_dataloader = val_dataloader
+test_dataloader = dict(
+    dataset=dict(
+        metainfo=metainfo,
+        data_root=data_root,
+        ann_file=val_ann_file_full,
+        data_prefix=dict(img=val_dir)))
 
 val_evaluator = dict(ann_file=data_root + val_ann_file_50)
+test_evaluator = dict(ann_file=data_root + val_ann_file_full)
 
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
-    optimizer=dict(type='AdamW', lr=0.0002, weight_decay=0.0001),
+    optimizer=dict(type='AdamW', lr=5e-5, weight_decay=0.0001),
     clip_grad=dict(max_norm=0.1, norm_type=2),
     paramwise_cfg=dict(
         custom_keys={
@@ -108,8 +114,34 @@ param_scheduler = [
 default_hooks = dict(
     checkpoint=dict(interval=50, max_keep_ckpts=5, save_best='auto'),
     logger=dict(type='LoggerHook', interval=50))
-train_cfg = dict(max_epochs=max_epochs, val_interval=1)
+train_cfg = dict(max_epochs=max_epochs, val_interval=10)
 
 load_from = 'weights/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det_20231204_095047-b448804b.pth'
 
-log_level = 'WARNING'
+log_level = 'INFO'
+
+# custom_hooks = [
+#     dict(
+#         type='EMAHook',
+#         ema_type='ExpMomentumEMA',
+#         momentum=0.0002,
+#         update_buffers=True,
+#         priority=49),
+# ]
+
+work_dir = 'work_dirs/swin-t_finetune-bs2-lr5e-5'
+
+vis_backends = [
+    dict(type='LocalVisBackend'),
+    dict(type='TensorboardVisBackend'),
+]
+visualizer = dict(
+    type='DetLocalVisualizer',
+    vis_backends=vis_backends,
+    name='visualizer')
+# visualization=dict( # user visualization of validation and test results
+#     type='DetVisualizationHook',
+#     draw=True,
+#     interval=1,
+#     show=True)
+# default_hooks = dict(visualization=dict(type='GroundingVisualizationHook'))
