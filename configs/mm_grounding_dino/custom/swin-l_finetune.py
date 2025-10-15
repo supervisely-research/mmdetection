@@ -148,20 +148,20 @@ param_scheduler = [
 
 # hooks
 default_hooks = dict(
-    checkpoint=dict(interval=1, max_keep_ckpts=5, save_best='auto'),
+    checkpoint=dict(interval=50, max_keep_ckpts=3, save_best='auto'),
     logger=dict(type='LoggerHook', interval=50))
-train_cfg = dict(max_epochs=max_epochs, val_interval=1)
+train_cfg = dict(max_epochs=max_epochs, val_interval=10)
 
-# custom_hooks = [
-#     dict(
-#         type='EMAHook',
-#         ema_type='ExpMomentumEMA',
-#         momentum=0.0002,
-#         update_buffers=True,
-#         priority=49),
-# ]
+custom_hooks = [
+    dict(
+        type='EMAHook',
+        ema_type='ExpMomentumEMA',
+        momentum=0.0002,
+        update_buffers=True,
+        priority=49),
+]
 
-work_dir = 'work_dirs/swin-l_finetune-bs2-lr2e-5-decay-ema-bert-on-300e (test)'
+work_dir = 'work_dirs/swin-l_finetune-bs2-lr2e-5-decay-ema-bert-on-300e-v2'
 
 vis_backends = [
     dict(type='LocalVisBackend'),
