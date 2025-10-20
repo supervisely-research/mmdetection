@@ -51,7 +51,11 @@ class SimplePolicy(BaseOnlinePolicy):
         self.all_img_ids = self.coco.getImgIds()
         
         # Track the current position in the dataset
-        self.current_idx = start_samples
+        self.current_idx = 0
+
+        # Initially add start_samples samples
+        for i in range(self.start_samples):
+            self.add_next_sample()
     
     def add_next_sample(self):
         """Add a single new sample from the annotation file."""
