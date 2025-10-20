@@ -85,12 +85,12 @@ test_dataloader = dict(
 val_evaluator = dict(ann_file=data_root + val_ann_file_50)
 test_evaluator = dict(ann_file=data_root + val_ann_file_full)
 
-online_training_policy = dict(
-    type='TestPolicy',
+online_policy = dict(
+    type='SimplePolicy',
     ann_file=data_root + train_ann_file_30shot,
     start_samples=5,  # start with 5 samples
     add_interval=10,  # add new samples every 10 steps
-    add_samples=1,    # add 1 new sample each time
+    add_count=1,    # add 1 new sample each time
 )
 
 optim_wrapper = dict(
