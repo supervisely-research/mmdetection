@@ -58,7 +58,9 @@ model = dict(bbox_head=dict(num_classes=num_classes))
 
 train_dataloader = dict(
     batch_size=2,
-    num_workers=2,
+    persistent_workers=False,
+    num_workers=0,
+    sampler=dict(type='CustomSampler', shuffle=True),
     dataset=dict(
         _delete_=True,
         type='OnlineTrainingDataset',
@@ -97,7 +99,7 @@ optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
     optimizer=dict(type='AdamW', lr=5e-5, weight_decay=0.0001),
-    clip_grad=dict(max_norm=0.1, norm_type=2),
+    clip_grad=dict(max_norm=0.2, norm_type=2),
     paramwise_cfg=dict(
         custom_keys={
             'absolute_pos_embed': dict(decay_mult=0.),
@@ -127,16 +129,17 @@ load_from = 'weights/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det_20
 
 log_level = 'INFO'
 
-# custom_hooks = [
-#     dict(
-#         type='EMAHook',
-#         ema_type='ExpMomentumEMA',
-#         momentum=0.0002,
-#         update_buffers=True,
-#         priority=49),
-# ]
+custom_hooks = [
+    online_policy,
+    # dict(
+    #     type='EMAHook',
+    #     ema_type='ExpMomentumEMA',
+    #     momentum=0.0002,
+    #     update_buffers=True,
+    #     priority=49),
+]
 
-work_dir = 'work_dirs/swin-t_finetune-bs2-lr5e-5'
+work_dir = 'work_dirs/swin-t-online (test)'
 
 vis_backends = [
     dict(type='LocalVisBackend'),

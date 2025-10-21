@@ -119,3 +119,5 @@ LOG_PROCESSORS = Registry(
     parent=MMENGINE_LOG_PROCESSORS,
     # TODO: update the location when mmdet has its own log processor
     locations=['mmdet.engine'])
+
+ONLINE_POLICY = Registry('online_policy', locations=['mmdet.online_training'])

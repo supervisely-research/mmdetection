@@ -17,6 +17,10 @@ class OnlineTrainingDataset(BaseDetDataset):
     
     METAINFO: dict = dict()
 
+    def __init__(self, *args, **kwargs):
+        kwargs['serialize_data'] = False
+        super().__init__(*args, **kwargs)
+
     def load_data_list(self) -> List[dict]:
         return []
 
@@ -89,8 +93,6 @@ class OnlineTrainingDataset(BaseDetDataset):
                 continue
             if ann['area'] <= 0 or w < 1 or h < 1:
                 continue
-            if ann['category_id'] not in self.cat_ids:
-                continue
             bbox = [x1, y1, x1 + w, y1 + h]
 
             if ann.get('iscrowd', False):
@@ -98,7 +100,7 @@ class OnlineTrainingDataset(BaseDetDataset):
             else:
                 instance['ignore_flag'] = 0
             instance['bbox'] = bbox
-            instance['bbox_label'] = self.cat2label[ann['category_id']]
+            instance['bbox_label'] = ann['category_id']
 
             if ann.get('segmentation', None):
                 instance['mask'] = ann['segmentation']

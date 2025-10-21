@@ -11,10 +11,13 @@ class BaseOnlinePolicy(Hook):
 
     All online training policy hooks should inherit from this class.
     """
+    def __init__(self):
+        self._runner: 'Runner' = None
+        self._train_dataset: OnlineTrainingDataset = None
 
     def before_run(self, runner: 'Runner'):
         self._runner = runner
-        self._train_dataset: OnlineTrainingDataset = runner.train_dataloader.dataset
+        self._train_dataset: OnlineTrainingDataset = runner.train_loop.dataloader.dataset
         assert isinstance(self._train_dataset, OnlineTrainingDataset), \
             'The training dataset must be an instance of OnlineTrainingDataset.'
 
@@ -46,13 +49,12 @@ class SimplePolicy(BaseOnlinePolicy):
         self.add_interval = add_interval
         self.add_count = add_count
         self.coco = COCO(ann_file)
-        
-        # Get all image IDs from COCO
         self.all_img_ids = self.coco.getImgIds()
-        
-        # Track the current position in the dataset
+        print(self.all_img_ids)        
         self.current_idx = 0
 
+    def before_run(self, runner: 'Runner'):
+        super().before_run(runner)
         # Initially add start_samples samples
         for i in range(self.start_samples):
             self.add_next_sample()
