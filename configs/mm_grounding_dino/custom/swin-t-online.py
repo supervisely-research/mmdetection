@@ -122,15 +122,17 @@ param_scheduler = [
 
 default_hooks = dict(
     checkpoint=dict(interval=50, max_keep_ckpts=5, save_best='auto'),
-    logger=dict(type='LoggerHook', interval=50))
-train_cfg = dict(max_epochs=max_epochs, val_interval=10)
+    logger=dict(type='LoggerHook', interval=10))
+train_cfg = dict(max_epochs=max_epochs, val_interval=5)
 
 load_from = 'weights/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det_20231204_095047-b448804b.pth'
 
 log_level = 'INFO'
 
 custom_hooks = [
-    online_policy,
+    dict(type='OnlineTrainingAPI',
+         start_samples=3),
+    # online_policy,
     # dict(
     #     type='EMAHook',
     #     ema_type='ExpMomentumEMA',

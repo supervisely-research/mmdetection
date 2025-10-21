@@ -7,11 +7,13 @@ import base64
 import io
 from PIL import Image
 import numpy as np
+import time
 
 from mmengine.hooks import Hook
 from mmengine.runner import Runner
 from mmengine.logging import print_log
 from mmdet.apis import inference_detector
+from mmdet.datasets.online_training_dataset import OnlineTrainingDataset
 from mmdet.registry import HOOKS
 
 from mmdet.online_training.request_queue import RequestQueue, RequestType
@@ -31,21 +33,98 @@ class OnlineTrainingAPI(Hook):
     
     def __init__(
         self,
-        data_root: Optional[str] = None
+        start_samples: int = 3,
+        data_root: Optional[str] = None,
+        host='0.0.0.0',
+        port=8000
     ):
         """
         Args:
+            start_samples: Number of initial samples to wait for before training
             data_root: Root directory for saving images
+            host: API server host
+            port: API server port
         """
         super().__init__()
         self.request_queue = RequestQueue()
         self.api_thread = start_api_server(
             request_queue=self.request_queue,
-            host="0.0.0.0",
-            port=8000
+            host=host,
+            port=port
         )
         self.data_root = Path(data_root) if data_root else None
         self.image_counter = 0
+        self.start_samples = start_samples
+    
+    @property
+    def _dataset(self) -> OnlineTrainingDataset:
+        return self.train_loop.dataloader.dataset
+    
+    def before_train(self, runner: Runner):
+        """
+        Wait for initial samples if dataset is empty.
+        
+        This ensures the dataset has at least one sample before training starts,
+        preventing errors from empty dataloaders.
+        """
+        self.train_loop = runner.train_loop
+        
+        if len(self._dataset) < self.start_samples:
+            print_log(
+                f"\n{'='*70}\n"
+                f"⏳ Dataset is empty! Waiting for samples to be added via API...\n"
+                f"{'='*70}\n"
+                f"   Please send samples to: POST /add_sample\n"
+                f"{'='*70}",
+                logger='current',
+                level=logging.WARNING
+            )
+            
+            max_wait_time = 3600  # Wait up to 1 hour
+            check_interval = 1    # Check every 1 second
+            elapsed_time = 0
+
+            while len(self._dataset) < self.start_samples and elapsed_time < max_wait_time:
+                # Process any pending add_sample requests
+                if not self.request_queue.is_empty():
+                    print_log(
+                        "📨 Processing add_sample request...",
+                        logger='current',
+                        level=logging.INFO
+                    )
+                    self._process_pending_requests(runner)
+                
+                # If still empty, wait and check again
+                if len(self._dataset) < self.start_samples:
+                    time.sleep(check_interval)
+                    elapsed_time += check_interval
+                    print(f"Still waiting... ({len(self._dataset)}/{self.start_samples} samples)")
+                    
+            # Check if we timed out or got samples
+            if len(self._dataset) < self.start_samples:
+                raise RuntimeError(
+                    f"Training cannot start: Dataset is still empty after "
+                    f"waiting {max_wait_time} seconds. Please add samples via "
+                    f"POST /add_sample endpoint."
+                )
+            
+            print_log(
+                f"\n{'='*70}\n"
+                f"✅ Dataset initialized with {len(self._dataset)} sample(s)!\n"
+                f"{'='*70}\n",
+                logger='current',
+                level=logging.INFO
+            )
+            
+            # Rebuild dataloader with the new samples
+            self._rebuild_dataloader(runner)
+        
+        else:
+            print_log(
+                f"✅ Dataset ready with {len(self._dataset)} samples",
+                logger='current',
+                level=logging.INFO
+            )
     
     def before_train_iter(
         self,
@@ -100,7 +179,10 @@ class OnlineTrainingAPI(Hook):
                     level=logging.ERROR
                 )
                 future.set_exception(e)
-        
+                # print traceback for debugging
+                import traceback
+                traceback.print_exc()
+
         # Rebuild dataloader if dataset was modified
         if needs_dataloader_rebuild:
             self._rebuild_dataloader(runner)
@@ -125,12 +207,14 @@ class OnlineTrainingAPI(Hook):
         model = runner.model
         was_training = model.training
         model.eval()
+        model.cfg = runner.cfg
         
         try:
             # with autocast(enabled=self.fp16):
             #     outputs = self.runner.model.test_step(data_batch)
             
-            result = inference_detector(model, image_np)
+            text = self._dataset.metainfo['classes']
+            result = inference_detector(model, image_np, text_prompt=text)
 
             # Format predictions
             pred_instances = result.pred_instances
@@ -184,7 +268,7 @@ class OnlineTrainingAPI(Hook):
         image_path = image_dir / filename
         
         # Save image
-        image.save(image_path, 'JPEG', quality=95)
+        image.save(image_path)
         
         # Create image info (COCO format)
         width, height = image.size
@@ -200,6 +284,7 @@ class OnlineTrainingAPI(Hook):
         validated_annotations = self._validate_annotations(annotations, img_info)
         
         # Add to dataset
+        dataset: 'OnlineTrainingDataset'
         sample_idx = dataset.add_sample(img_info, validated_annotations)
         
         print_log(
