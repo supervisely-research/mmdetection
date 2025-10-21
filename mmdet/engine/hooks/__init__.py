@@ -12,6 +12,7 @@ from .visualization_hook import (DetVisualizationHook,
                                  TrackVisualizationHook)
 from .yolox_mode_switch_hook import YOLOXModeSwitchHook
 from .online_policy import *
+from .online_training_api import *
 
 __all__ = [
     'YOLOXModeSwitchHook', 'SyncNormHook', 'CheckInvalidLossHook',
