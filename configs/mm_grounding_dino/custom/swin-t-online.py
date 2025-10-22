@@ -90,9 +90,9 @@ test_evaluator = dict(ann_file=data_root + val_ann_file_full)
 online_policy = dict(
     type='SimplePolicy',
     ann_file=data_root + train_ann_file_30shot,
-    start_samples=5,  # start with 5 samples
-    add_interval=10,  # add new samples every 10 steps
-    add_count=1,    # add 1 new sample each time
+    start_samples=2,  # start with 5 samples
+    add_interval=200,  # add new samples every 10 steps
+    add_count=28,    # add 1 new sample each time
 )
 
 optim_wrapper = dict(
@@ -104,7 +104,7 @@ optim_wrapper = dict(
         custom_keys={
             'absolute_pos_embed': dict(decay_mult=0.),
             'backbone': dict(lr_mult=0.1),
-            'language_model': dict(lr_mult=0.0),
+            'language_model': dict(lr_mult=0.1),
         }))
 
 # learning policy
@@ -116,23 +116,22 @@ param_scheduler = [
         begin=0,
         end=max_epochs,
         by_epoch=True,
-        milestones=[350],
+        milestones=[380],
         gamma=0.1)
 ]
 
 default_hooks = dict(
     checkpoint=dict(interval=50, max_keep_ckpts=5, save_best='auto'),
     logger=dict(type='LoggerHook', interval=10))
-train_cfg = dict(max_epochs=max_epochs, val_interval=5)
+train_cfg = dict(max_epochs=max_epochs, val_interval=10)
 
 load_from = 'weights/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det_20231204_095047-b448804b.pth'
 
 log_level = 'INFO'
 
 custom_hooks = [
-    dict(type='OnlineTrainingAPI',
-         start_samples=3),
-    # online_policy,
+    online_policy,
+    # dict(type='OnlineTrainingAPI', start_samples=3),
     # dict(
     #     type='EMAHook',
     #     ema_type='ExpMomentumEMA',
@@ -141,7 +140,7 @@ custom_hooks = [
     #     priority=49),
 ]
 
-work_dir = 'work_dirs/swin-t-online (test)'
+work_dir = 'work_dirs/swin-t-online-degeneration-test'
 
 vis_backends = [
     dict(type='LocalVisBackend'),
